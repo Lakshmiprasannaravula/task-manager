@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Task Management App</title>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial, sans-serif;
+}
+
+body{
+background:#0f172a;
+color:white;
+min-height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+padding:20px;
+}
+
+.container{
+width:100%;
+max-width:1000px;
+background:#1e293b;
+padding:20px;
+border-radius:15px;
+box-shadow:0 0 20px rgba(0,0,0,0.4);
+}
+
+h1{
+text-align:center;
+margin-bottom:20px;
+color:#38bdf8;
+}
+
+.auth-container{
+display:flex;
+gap:10px;
+margin-bottom:20px;
+flex-wrap:wrap;
+}
+
+.auth-container input{
+flex:1;
+padding:12px;
+border:none;
+border-radius:8px;
+outline:none;
+}
+
+button{
+padding:12px 18px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+transition:0.3s;
+}
+
+.login-btn{
+background:#22c55e;
+color:white;
+}
+
+.register-btn{
+background:#3b82f6;
+color:white;
+}
+
+.logout-btn{
+background:#ef4444;
+color:white;
+margin-top:10px;
+}
+
+.task-input{
+display:flex;
+gap:10px;
+margin:20px 0;
+flex-wrap:wrap;
+}
+
+.task-input input,
+.task-input select{
+padding:12px;
+border:none;
+border-radius:8px;
+flex:1;
+outline:none;
+}
+
+.add-btn{
+background:#06b6d4;
+color:white;
+}
+
+.search-filter{
+display:flex;
+gap:10px;
+margin-bottom:20px;
+flex-wrap:wrap;
+}
+
+.search-filter input,
+.search-filter select{
+padding:12px;
+border:none;
+border-radius:8px;
+flex:1;
+}
+
+.task-list{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:15px;
+}
+
+.task-card{
+background:#334155;
+padding:15px;
+border-radius:12px;
+position:relative;
+transition:0.3s;
+}
+
+.task-card:hover{
+transform:translateY(-5px);
+}
+
+.task-card h3{
+margin-bottom:10px;
+}
+
+.status{
+padding:5px 10px;
+border-radius:20px;
+font-size:12px;
+display:inline-block;
+margin-bottom:10px;
+}
+
+.pending{
+background:#f59e0b;
+}
+
+.completed{
+background:#22c55e;
+}
+
+.task-actions{
+display:flex;
+gap:10px;
+margin-top:10px;
+}
+
+.edit-btn{
+background:#3b82f6;
+color:white;
+}
+
+.delete-btn{
+background:#ef4444;
+color:white;
+}
+
+.hidden{
+display:none;
+}
+
+@media(max-width:600px){
+.auth-container,
+.task-input,
+.search-filter{
+flex-direction:column;
+}
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Task Management App</h1>
+
+<!-- Authentication -->
+<div id="authSection">
+
+<div class="auth-container">
+<input type="text" id="username" placeholder="Username">
+<input type="password" id="password" placeholder="Password">
+
+<button class="register-btn" onclick="register()">Register</button>
+<button class="login-btn" onclick="login()">Login</button>
+</div>
+
+</div>
+
+<!-- App -->
+<div id="appSection" class="hidden">
+
+<h2 id="welcomeText"></h2>
+
+<button class="logout-btn" onclick="logout()">Logout</button>
+
+<!-- Add Task -->
+<div class="task-input">
+<input type="text" id="taskTitle" placeholder="Task Title">
+
+<select id="taskStatus">
+<option value="Pending">Pending</option>
+<option value="Completed">Completed</option>
+</select>
+
+<button class="add-btn" onclick="addTask()">Add Task</button>
+</div>
+
+<!-- Search Filter -->
+<div class="search-filter">
+<input type="text" id="searchTask" placeholder="Search Task..." onkeyup="renderTasks()">
+
+<select id="filterStatus" onchange="renderTasks()">
+<option value="All">All</option>
+<option value="Pending">Pending</option>
+<option value="Completed">Completed</option>
+</select>
+</div>
+
+<!-- Task List -->
+<div class="task-list" id="taskList"></div>
+
+</div>
+
+</div>
+
+<script>
+
+let currentUser = null;
+let users = JSON.parse(localStorage.getItem("users")) || [];
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+function saveData(){
+localStorage.setItem("users", JSON.stringify(users));
+localStorage.setItem("tasks", JSON.stringify(tasks));
+}
+
+function register(){
+
+const username = document.getElementById("username").value;
+const password = document.getElementById("password").value;
+
+if(!username || !password){
+alert("Please fill all fields");
+return;
+}
+
+const userExists = users.find(user => user.username === username);
+
+if(userExists){
+alert("User already exists");
+return;
+}
+
+users.push({username, password});
+saveData();
+
+alert("Registration successful");
+}
+
+function login(){
+
+const username = document.getElementById("username").value;
+const password = document.getElementById("password").value;
+
+const user = users.find(
+u => u.username === username && u.password === password
+);
+
+if(!user){
+alert("Invalid credentials");
+return;
+}
+
+currentUser = username;
+
+document.getElementById("authSection").classList.add("hidden");
+document.getElementById("appSection").classList.remove("hidden");
+
+document.getElementById("welcomeText").innerText =
+`Welcome, ${username}`;
+
+renderTasks();
+
+simulateRealtimeUpdates();
+}
+
+function logout(){
+currentUser = null;
+
+document.getElementById("authSection").classList.remove("hidden");
+document.getElementById("appSection").classList.add("hidden");
+}
+
+function addTask(){
+
+const title = document.getElementById("taskTitle").value;
+const status = document.getElementById("taskStatus").value;
+
+if(!title){
+alert("Please enter task");
+return;
+}
+
+const task = {
+id: Date.now(),
+title,
+status,
+user: currentUser
+};
+
+tasks.push(task);
+
+saveData();
+
+document.getElementById("taskTitle").value = "";
+
+renderTasks();
+}
+
+function renderTasks(){
+
+const taskList = document.getElementById("taskList");
+
+const search = document.getElementById("searchTask").value.toLowerCase();
+
+const filter = document.getElementById("filterStatus").value;
+
+taskList.innerHTML = "";
+
+const userTasks = tasks.filter(task =>
+task.user === currentUser
+);
+
+const filteredTasks = userTasks.filter(task => {
+
+const matchesSearch =
+task.title.toLowerCase().includes(search);
+
+const matchesFilter =
+filter === "All" || task.status === filter;
+
+return matchesSearch && matchesFilter;
+});
+
+if(filteredTasks.length === 0){
+taskList.innerHTML = "<p>No tasks found</p>";
+return;
+}
+
+filteredTasks.forEach(task => {
+
+const card = document.createElement("div");
+card.className = "task-card";
+
+card.innerHTML = `
+<h3>${task.title}</h3>
+
+<span class="status ${
+task.status === "Completed"
+? "completed"
+: "pending"
+}">
+${task.status}
+</span>
+
+<div class="task-actions">
+
+<button class="edit-btn"
+onclick="toggleTask(${task.id})">
+Toggle
+</button>
+
+<button class="delete-btn"
+onclick="deleteTask(${task.id})">
+Delete
+</button>
+
+</div>
+`;
+
+taskList.appendChild(card);
+});
+}
+
+function toggleTask(id){
+
+tasks = tasks.map(task => {
+
+if(task.id === id){
+
+task.status =
+task.status === "Pending"
+? "Completed"
+: "Pending";
+}
+
+return task;
+});
+
+saveData();
+
+renderTasks();
+}
+
+function deleteTask(id){
+
+tasks = tasks.filter(task => task.id !== id);
+
+saveData();
+
+renderTasks();
+}
+
+function simulateRealtimeUpdates(){
+
+window.addEventListener("storage", () => {
+tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+renderTasks();
+});
+
+}
+
+</script>
+
+</body>
+</html>
